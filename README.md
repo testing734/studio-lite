@@ -1,3 +1,6 @@
+# Warning
+this was taken from the original github https://github.com/Asicosilomu/studio-lite i dont take its credits and im just hosting it on github pages for my projects when i need to view a file
+
 # Studio Lite
 A web viewer for _Roblox[^1]_ place and model files, with a gorgeous interface.
 

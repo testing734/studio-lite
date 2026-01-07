@@ -1,118 +1,107 @@
 import * as THREE from "three";
-import { PointerLockControls } from "./PointerLockControls.js";
 
 export default class FlyCamera {
-  constructor(cam, domElement) {
+  constructor(camera, domElement) {
+    this.cam = camera;
     this.domElement = domElement;
-    this.cam = cam;
-    this.flySpeed = 5;
+
+    this.lookSensitivity = 0.004;
     this.isMobile = "ontouchstart" in window;
-    this.controls = null;
-    if (!this.isMobile && this.isPointerLockSupported()) {
-      this.controls = new PointerLockControls(this.cam, this.domElement);
-      this.domElement.addEventListener("click", () => this.controls.lock());
-      this.moveForward = false;
-      this.moveBackward = false;
-      this.moveLeft = false;
-      this.moveRight = false;
-      this.moveUp = false;
-      this.moveDown = false;
-      window.addEventListener("keydown", (e) => {
-        if (!this.controls.isLocked) return;
-        switch (e.code) {
-          case "KeyW": this.moveForward = true; break;
-          case "KeyS": this.moveBackward = true; break;
-          case "KeyA": this.moveLeft = true; break;
-          case "KeyD": this.moveRight = true; break;
-          case "KeyE": this.moveUp = true; break;
-          case "KeyQ": this.moveDown = true; break;
-        }
-      });
-      window.addEventListener("keyup", (e) => {
-        if (!this.controls.isLocked) return;
-        switch (e.code) {
-          case "KeyW": this.moveForward = false; break;
-          case "KeyS": this.moveBackward = false; break;
-          case "KeyA": this.moveLeft = false; break;
-          case "KeyD": this.moveRight = false; break;
-          case "KeyE": this.moveUp = false; break;
-          case "KeyQ": this.moveDown = false; break;
-        }
-      });
-    }
-    this.movementSpeed = 0;
-    this.horizontalMovementSpeed = 0;
-    this.verticalMovementSpeed = 0;
-    if (this.isMobile) {
-      this.yaw = 0;
-      this.pitch = 0;
-      this.touchRotateSpeed = 0.004;
-      this.touchZoomSpeed = 0.05;
-      this.lastTouch = null;
-      this.lastPinchDistance = null;
-      this.tempVec = new THREE.Vector3();
-      this.tempQuat = new THREE.Quaternion();
-      domElement.addEventListener("touchstart", (e) => {
-        if (e.touches.length === 1) {
-          const t = e.touches[0];
-          this.lastTouch = { x: t.clientX, y: t.clientY };
-        }
-        if (e.touches.length === 2) this.lastPinchDistance = this.getPinchDistance(e.touches);
-      });
-      domElement.addEventListener("touchmove", (e) => {
-        e.preventDefault();
-        if (e.touches.length === 1 && this.lastTouch) {
-          const t = e.touches[0];
-          const dx = t.clientX - this.lastTouch.x;
-          const dy = t.clientY - this.lastTouch.y;
-          this.yaw -= dx * this.touchRotateSpeed;
-          this.pitch -= dy * this.touchRotateSpeed;
-          this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
-          this.tempQuat.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
-          this.cam.quaternion.copy(this.tempQuat);
-          this.lastTouch.x = t.clientX;
-          this.lastTouch.y = t.clientY;
-        }
-        if (e.touches.length === 2 && this.lastPinchDistance !== null) {
-          const currentDistance = this.getPinchDistance(e.touches);
-          const delta = currentDistance - this.lastPinchDistance;
-          this.cam.getWorldDirection(this.tempVec);
-          this.tempVec.multiplyScalar(-delta * this.touchZoomSpeed);
-          this.cam.position.add(this.tempVec);
-          this.lastPinchDistance = currentDistance;
-        }
-      }, { passive: false });
-      domElement.addEventListener("touchend", () => {
-        this.lastTouch = null;
-        this.lastPinchDistance = null;
-      });
-    }
+
+    this.yaw = 0;
+    this.pitch = 0;
+
+    this.isMouseDown = false;
+    this.mouseLastX = 0;
+    this.mouseLastY = 0;
+
+    this.isTouching = false;
+    this.touchLastX = 0;
+    this.touchLastY = 0;
+    this.touchStartDist = 0;
+
+    // Mouse look
+    window.addEventListener("mousedown", e => {
+      if (e.button === 2) {
+        this.isMouseDown = true;
+        this.mouseLastX = e.clientX;
+        this.mouseLastY = e.clientY;
+      }
+    });
+    window.addEventListener("mouseup", e => {
+      if (e.button === 2) this.isMouseDown = false;
+    });
+    window.addEventListener("mousemove", e => {
+      if (this.isMouseDown) {
+        const dx = e.clientX - this.mouseLastX;
+        const dy = e.clientY - this.mouseLastY;
+        this.yaw -= dx * this.lookSensitivity;
+        this.pitch -= dy * this.lookSensitivity;
+        this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+        this.mouseLastX = e.clientX;
+        this.mouseLastY = e.clientY;
+
+        const q = new THREE.Quaternion();
+        q.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
+        this.cam.quaternion.copy(q);
+      }
+    });
+    window.addEventListener("contextmenu", e => e.preventDefault());
+
+    // Scroll zoom
+    window.addEventListener("wheel", e => {
+      const dir = new THREE.Vector3();
+      this.cam.getWorldDirection(dir);
+      dir.multiplyScalar(e.deltaY * -0.02);
+      this.cam.position.add(dir);
+    });
+
+    // Touch controls
+    window.addEventListener("touchstart", e => {
+      if (e.touches.length === 1) {
+        this.isTouching = true;
+        this.touchLastX = e.touches[0].clientX;
+        this.touchLastY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        this.touchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    });
+
+    window.addEventListener("touchmove", e => {
+      if (e.touches.length === 1 && this.isTouching) {
+        const dx = e.touches[0].clientX - this.touchLastX;
+        const dy = e.touches[0].clientY - this.touchLastY;
+        this.yaw -= dx * this.lookSensitivity * 1.2;
+        this.pitch -= dy * this.lookSensitivity * 1.2;
+        this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+        this.touchLastX = e.touches[0].clientX;
+        this.touchLastY = e.touches[0].clientY;
+
+        const q = new THREE.Quaternion();
+        q.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
+        this.cam.quaternion.copy(q);
+      } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const delta = dist - this.touchStartDist;
+        const dir = new THREE.Vector3();
+        this.cam.getWorldDirection(dir);
+        dir.multiplyScalar(delta * 0.05);
+        this.cam.position.add(dir);
+        this.touchStartDist = dist;
+      }
+    });
+
+    window.addEventListener("touchend", () => {
+      this.isTouching = false;
+      this.touchStartDist = 0;
+    });
   }
 
-  update(dt) {
-    if (this.isMobile) return;
-    if (this.controls && !this.controls.isLocked) return;
-    if (this.moveForward) this.movementSpeed += this.flySpeed;
-    else if (this.moveBackward) this.movementSpeed -= this.flySpeed;
-    else this.movementSpeed *= 0.8;
-    if (this.moveLeft) this.horizontalMovementSpeed -= this.flySpeed;
-    else if (this.moveRight) this.horizontalMovementSpeed += this.flySpeed;
-    else this.horizontalMovementSpeed *= 0.8;
-    if (this.moveUp) this.verticalMovementSpeed += this.flySpeed;
-    else if (this.moveDown) this.verticalMovementSpeed -= this.flySpeed;
-    else this.verticalMovementSpeed *= 0.8;
-    this.cam.translateX(this.horizontalMovementSpeed * dt);
-    this.cam.translateY(this.verticalMovementSpeed * dt);
-    this.cam.translateZ(-this.movementSpeed * dt);
-  }
-
-  getPinchDistance(touches) {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  isPointerLockSupported() {
-    return "pointerLockElement" in document || "mozPointerLockElement" in document || "webkitPointerLockElement" in document;
-  }
+  update() {}
 }

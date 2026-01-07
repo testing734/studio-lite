@@ -79,7 +79,6 @@ export default class FlyCamera {
             this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
 
             this.tempQuat.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
-            this.tempQuat.z = 0; // remove roll completely
             this.cam.quaternion.copy(this.tempQuat);
 
             this.lastTouch.x = t.clientX;

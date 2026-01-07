@@ -6,28 +6,22 @@ export default class FlyCamera {
     this.domElement = domElement;
 
     this.flySpeed = 5;
-    this.movementSpeed = 0;
-    this.horizontalMovementSpeed = 0;
-    this.verticalMovementSpeed = 0;
-
-    this.moveForward = false;
-    this.moveBackward = false;
-    this.moveLeft = false;
-    this.moveRight = false;
-    this.moveUp = false;
-    this.moveDown = false;
+    this.isMobile = 'ontouchstart' in window;
 
     this.controls = null;
-
-    if (this.isPointerLockSupported()) {
+    if (!this.isMobile && this.isPointerLockSupported()) {
       this.controls = new PointerLockControls(this.cam, this.domElement);
+      this.domElement.addEventListener("click", () => this.controls.lock());
 
-      this.domElement.addEventListener("click", () => {
-        this.controls.lock();
-      });
+      this.moveForward = false;
+      this.moveBackward = false;
+      this.moveLeft = false;
+      this.moveRight = false;
+      this.moveUp = false;
+      this.moveDown = false;
 
       window.addEventListener("keydown", (e) => {
-        if (!this.controls || !this.controls.isLocked) return;
+        if (!this.controls.isLocked) return;
         switch (e.code) {
           case "KeyW": this.moveForward = true; break;
           case "KeyS": this.moveBackward = true; break;
@@ -37,9 +31,8 @@ export default class FlyCamera {
           case "KeyQ": this.moveDown = true; break;
         }
       });
-
       window.addEventListener("keyup", (e) => {
-        if (!this.controls || !this.controls.isLocked) return;
+        if (!this.controls.isLocked) return;
         switch (e.code) {
           case "KeyW": this.moveForward = false; break;
           case "KeyS": this.moveBackward = false; break;
@@ -51,9 +44,9 @@ export default class FlyCamera {
       });
     }
 
+    // Mobile touch
     this.lastTouch = null;
     this.lastPinchDistance = null;
-
     this.touchRotateSpeed = 0.005;
     this.touchZoomSpeed = 0.05;
 
@@ -71,23 +64,19 @@ export default class FlyCamera {
       "touchmove",
       (e) => {
         e.preventDefault();
-
         if (e.touches.length === 1 && this.lastTouch) {
           const t = e.touches[0];
           const dx = t.clientX - this.lastTouch.x;
           const dy = t.clientY - this.lastTouch.y;
-
           this.cam.rotation.y -= dx * this.touchRotateSpeed;
           this.cam.rotation.x -= dy * this.touchRotateSpeed;
           this.cam.rotation.x = Math.max(
             -Math.PI / 2,
             Math.min(Math.PI / 2, this.cam.rotation.x)
           );
-
           this.lastTouch.x = t.clientX;
           this.lastTouch.y = t.clientY;
         }
-
         if (e.touches.length === 2 && this.lastPinchDistance !== null) {
           const currentDistance = this.getPinchDistance(e.touches);
           const delta = currentDistance - this.lastPinchDistance;
@@ -102,9 +91,15 @@ export default class FlyCamera {
       this.lastTouch = null;
       this.lastPinchDistance = null;
     });
+
+    this.movementSpeed = 0;
+    this.horizontalMovementSpeed = 0;
+    this.verticalMovementSpeed = 0;
   }
 
   update(dt) {
+    if (this.isMobile) return; 
+
     if (this.controls && !this.controls.isLocked) return;
 
     if (this.moveForward) this.movementSpeed += this.flySpeed;

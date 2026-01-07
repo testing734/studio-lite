@@ -7,6 +7,7 @@ export default class FlyCamera {
     this.cam = cam;
     this.flySpeed = 5;
     this.isMobile = "ontouchstart" in window;
+
     this.controls = null;
     if (!this.isMobile && this.isPointerLockSupported()) {
       this.controls = new PointerLockControls(this.cam, this.domElement);
@@ -40,9 +41,11 @@ export default class FlyCamera {
         }
       });
     }
+
     this.movementSpeed = 0;
     this.horizontalMovementSpeed = 0;
     this.verticalMovementSpeed = 0;
+
     if (this.isMobile) {
       this.yaw = 0;
       this.pitch = 0;
@@ -52,6 +55,7 @@ export default class FlyCamera {
       this.lastPinchDistance = null;
       this.tempVec = new THREE.Vector3();
       this.tempQuat = new THREE.Quaternion();
+
       domElement.addEventListener("touchstart", (e) => {
         if (e.touches.length === 1) {
           const t = e.touches[0];
@@ -59,29 +63,41 @@ export default class FlyCamera {
         }
         if (e.touches.length === 2) this.lastPinchDistance = this.getPinchDistance(e.touches);
       });
-      domElement.addEventListener("touchmove", (e) => {
-        e.preventDefault();
-        if (e.touches.length === 1 && this.lastTouch) {
-          const t = e.touches[0];
-          const dx = t.clientX - this.lastTouch.x;
-          const dy = t.clientY - this.lastTouch.y;
-          this.yaw -= dx * this.touchRotateSpeed;
-          this.pitch -= dy * this.touchRotateSpeed;
-          this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
-          this.tempQuat.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
-          this.cam.quaternion.copy(this.tempQuat);
-          this.lastTouch.x = t.clientX;
-          this.lastTouch.y = t.clientY;
-        }
-        if (e.touches.length === 2 && this.lastPinchDistance !== null) {
-          const currentDistance = this.getPinchDistance(e.touches);
-          const delta = currentDistance - this.lastPinchDistance;
-          this.cam.getWorldDirection(this.tempVec);
-          this.tempVec.multiplyScalar(-delta * this.touchZoomSpeed);
-          this.cam.position.add(this.tempVec);
-          this.lastPinchDistance = currentDistance;
-        }
-      }, { passive: false });
+
+      domElement.addEventListener(
+        "touchmove",
+        (e) => {
+          e.preventDefault();
+
+          if (e.touches.length === 1 && this.lastTouch) {
+            const t = e.touches[0];
+            const dx = t.clientX - this.lastTouch.x;
+            const dy = t.clientY - this.lastTouch.y;
+
+            this.yaw -= dx * this.touchRotateSpeed;
+            this.pitch -= dy * this.touchRotateSpeed;
+            this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+
+            this.tempQuat.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
+            this.tempQuat.z = 0; // remove roll completely
+            this.cam.quaternion.copy(this.tempQuat);
+
+            this.lastTouch.x = t.clientX;
+            this.lastTouch.y = t.clientY;
+          }
+
+          if (e.touches.length === 2 && this.lastPinchDistance !== null) {
+            const currentDistance = this.getPinchDistance(e.touches);
+            const delta = currentDistance - this.lastPinchDistance;
+            this.cam.getWorldDirection(this.tempVec);
+            this.tempVec.multiplyScalar(-delta * this.touchZoomSpeed);
+            this.cam.position.add(this.tempVec);
+            this.lastPinchDistance = currentDistance;
+          }
+        },
+        { passive: false }
+      );
+
       domElement.addEventListener("touchend", () => {
         this.lastTouch = null;
         this.lastPinchDistance = null;

@@ -53,7 +53,8 @@ export default class FlyCamera {
 
     this.lastTouch = null;
     this.lastPinchDistance = null;
-    this.touchPanSpeed = 0.02;
+
+    this.touchRotateSpeed = 0.005;
     this.touchZoomSpeed = 0.05;
 
     domElement.addEventListener("touchstart", (e) => {
@@ -70,15 +71,23 @@ export default class FlyCamera {
       "touchmove",
       (e) => {
         e.preventDefault();
+
         if (e.touches.length === 1 && this.lastTouch) {
           const t = e.touches[0];
           const dx = t.clientX - this.lastTouch.x;
           const dy = t.clientY - this.lastTouch.y;
-          this.cam.translateX(dx * this.touchPanSpeed);
-          this.cam.translateY(-dy * this.touchPanSpeed);
+
+          this.cam.rotation.y -= dx * this.touchRotateSpeed;
+          this.cam.rotation.x -= dy * this.touchRotateSpeed;
+          this.cam.rotation.x = Math.max(
+            -Math.PI / 2,
+            Math.min(Math.PI / 2, this.cam.rotation.x)
+          );
+
           this.lastTouch.x = t.clientX;
           this.lastTouch.y = t.clientY;
         }
+
         if (e.touches.length === 2 && this.lastPinchDistance !== null) {
           const currentDistance = this.getPinchDistance(e.touches);
           const delta = currentDistance - this.lastPinchDistance;

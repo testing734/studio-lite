@@ -21,6 +21,11 @@ export default class FlyCamera {
 
     this.isMobile = "ontouchstart" in window;
 
+    if (this.isMobile) {
+      this.controls.isLocked = true;
+      this.domElement.style.touchAction = "none";
+    }
+
     this.touchState = {
       oneFinger: false,
       twoFinger: false,
@@ -34,7 +39,9 @@ export default class FlyCamera {
     this.touchFlySpeed = 0.08;
 
     domElement.addEventListener("click", () => {
-      this.controls.lock();
+      if (!this.isMobile) {
+        this.controls.lock();
+      }
     });
 
     window.addEventListener("keydown", e => {
@@ -133,19 +140,19 @@ export default class FlyCamera {
   }
 
   update(dt) {
-    if (this.controls.isLocked) {
-      if (this.moveForward && this.movementSpeed < 50) this.movementSpeed += this.flySpeed;
-      else if (this.moveBackward && this.movementSpeed > -50) this.movementSpeed -= this.flySpeed;
-      else this.movementSpeed *= 0.8;
+    if (!this.controls.isLocked) return;
 
-      if (this.moveRight && this.horizontalMovementSpeed < 50) this.horizontalMovementSpeed += this.flySpeed;
-      else if (this.moveLeft && this.horizontalMovementSpeed > -50) this.horizontalMovementSpeed -= this.flySpeed;
-      else this.horizontalMovementSpeed *= 0.8;
+    if (this.moveForward && this.movementSpeed < 50) this.movementSpeed += this.flySpeed;
+    else if (this.moveBackward && this.movementSpeed > -50) this.movementSpeed -= this.flySpeed;
+    else this.movementSpeed *= 0.8;
 
-      if (this.moveUp && this.verticalMovementSpeed < 50) this.verticalMovementSpeed += this.flySpeed;
-      else if (this.moveDown && this.verticalMovementSpeed > -50) this.verticalMovementSpeed -= this.flySpeed;
-      else this.verticalMovementSpeed *= 0.8;
-    }
+    if (this.moveRight && this.horizontalMovementSpeed < 50) this.horizontalMovementSpeed += this.flySpeed;
+    else if (this.moveLeft && this.horizontalMovementSpeed > -50) this.horizontalMovementSpeed -= this.flySpeed;
+    else this.horizontalMovementSpeed *= 0.8;
+
+    if (this.moveUp && this.verticalMovementSpeed < 50) this.verticalMovementSpeed += this.flySpeed;
+    else if (this.moveDown && this.verticalMovementSpeed > -50) this.verticalMovementSpeed -= this.flySpeed;
+    else this.verticalMovementSpeed *= 0.8;
 
     this.cam.translateX(this.horizontalMovementSpeed * dt);
     this.cam.translateY(this.verticalMovementSpeed * dt);

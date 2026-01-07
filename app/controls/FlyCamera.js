@@ -1,161 +1,125 @@
 import { PointerLockControls } from "./PointerLockControls.js";
+import * as THREE from "three";
 
 export default class FlyCamera {
-  constructor(cam, domElement) {
-    this.cam = cam;
+  constructor(camera, domElement) {
+    this.camera = camera;
     this.domElement = domElement;
+
+    this.controls = new PointerLockControls(camera, domElement);
+
+    this.isMobile = "ontouchstart" in window;
+    if (this.isMobile) this.controls.isLocked = true;
+
+    this.yaw = 0;
+    this.pitch = 0;
+    this.lookSensitivity = 0.002;
+
+    this.isMouseDown = false;
+    this.mouseLastX = 0;
+    this.mouseLastY = 0;
+
+    this.isTouching = false;
+    this.touchLastX = 0;
+    this.touchLastY = 0;
+    this.touchStartDist = 0;
+
+    this.moveSpeed = 10;
 
     this.movementSpeed = 0;
     this.horizontalMovementSpeed = 0;
     this.verticalMovementSpeed = 0;
-    this.flySpeed = 5;
-
-    this.controls = new PointerLockControls(this.cam, this.domElement);
-
-    this.moveForward = false;
-    this.moveBackward = false;
-    this.moveLeft = false;
-    this.moveRight = false;
-    this.moveUp = false;
-    this.moveDown = false;
-
-    this.isMobile = "ontouchstart" in window;
-
-    if (this.isMobile) {
-      this.controls.isLocked = true;
-      this.domElement.style.touchAction = "none";
-    }
-
-    this.touchState = {
-      oneFinger: false,
-      twoFinger: false,
-      lastX: 0,
-      lastY: 0,
-      lastDistance: 0
-    };
-
-    this.touchLookSpeed = 0.002;
-    this.touchMoveSpeed = 0.05;
-    this.touchFlySpeed = 0.08;
 
     domElement.addEventListener("click", () => {
-      if (!this.isMobile) {
-        this.controls.lock();
+      if (!this.isMobile) this.controls.lock();
+    });
+
+    window.addEventListener("contextmenu", e => e.preventDefault());
+
+    window.addEventListener("mousedown", e => {
+      if (e.button === 2) {
+        this.isMouseDown = true;
+        this.mouseLastX = e.clientX;
+        this.mouseLastY = e.clientY;
       }
     });
 
-    window.addEventListener("keydown", e => {
-      if (!this.controls.isLocked) return;
-      if (e.code === "KeyW") this.moveForward = true;
-      if (e.code === "KeyS") this.moveBackward = true;
-      if (e.code === "KeyA") this.moveLeft = true;
-      if (e.code === "KeyD") this.moveRight = true;
-      if (e.code === "KeyE") this.moveUp = true;
-      if (e.code === "KeyQ") this.moveDown = true;
+    window.addEventListener("mouseup", e => {
+      if (e.button === 2) this.isMouseDown = false;
     });
 
-    window.addEventListener("keyup", e => {
-      if (!this.controls.isLocked) return;
-      if (e.code === "KeyW") this.moveForward = false;
-      if (e.code === "KeyS") this.moveBackward = false;
-      if (e.code === "KeyA") this.moveLeft = false;
-      if (e.code === "KeyD") this.moveRight = false;
-      if (e.code === "KeyE") this.moveUp = false;
-      if (e.code === "KeyQ") this.moveDown = false;
+    window.addEventListener("mousemove", e => {
+      if (!this.isMouseDown || !this.controls.isLocked) return;
+
+      const dx = e.clientX - this.mouseLastX;
+      const dy = e.clientY - this.mouseLastY;
+
+      this.yaw -= dx * this.lookSensitivity;
+      this.pitch -= dy * this.lookSensitivity;
+      this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+
+      this.mouseLastX = e.clientX;
+      this.mouseLastY = e.clientY;
+
+      this.controls.getObject().rotation.y = this.yaw;
+      this.controls.getPitchObject().rotation.x = this.pitch;
     });
 
-    if (this.isMobile) {
-      domElement.addEventListener("touchstart", this.onTouchStart.bind(this), { passive: false });
-      domElement.addEventListener("touchmove", this.onTouchMove.bind(this), { passive: false });
-      domElement.addEventListener("touchend", this.onTouchEnd.bind(this));
-    }
+    window.addEventListener("wheel", e => {
+      if (!this.controls.isLocked) return;
+      const dir = this.camera.getWorldDirection(new THREE.Vector3());
+      this.camera.position.add(dir.multiplyScalar(e.deltaY * -0.02));
+    });
+
+    window.addEventListener("touchstart", e => {
+      if (!this.controls.isLocked) return;
+
+      if (e.touches.length === 1) {
+        this.isTouching = true;
+        this.touchLastX = e.touches[0].clientX;
+        this.touchLastY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        this.touchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: false });
+
+    window.addEventListener("touchmove", e => {
+      if (!this.controls.isLocked) return;
+      e.preventDefault();
+
+      if (e.touches.length === 1 && this.isTouching) {
+        const dx = e.touches[0].clientX - this.touchLastX;
+        const dy = e.touches[0].clientY - this.touchLastY;
+
+        this.yaw -= dx * this.lookSensitivity * 1.2;
+        this.pitch -= dy * this.lookSensitivity * 1.2;
+        this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+
+        this.touchLastX = e.touches[0].clientX;
+        this.touchLastY = e.touches[0].clientY;
+
+        this.controls.getObject().rotation.y = this.yaw;
+        this.controls.getPitchObject().rotation.x = this.pitch;
+      } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+
+        const delta = dist - this.touchStartDist;
+        const dir = this.camera.getWorldDirection(new THREE.Vector3());
+        this.camera.position.add(dir.multiplyScalar(delta * 0.05));
+        this.touchStartDist = dist;
+      }
+    }, { passive: false });
+
+    window.addEventListener("touchend", e => {
+      if (e.touches.length < 1) this.isTouching = false;
+    });
   }
 
-  onTouchStart(e) {
-    e.preventDefault();
-
-    if (e.touches.length === 1) {
-      this.touchState.oneFinger = true;
-      this.touchState.twoFinger = false;
-      this.touchState.lastX = e.touches[0].clientX;
-      this.touchState.lastY = e.touches[0].clientY;
-    }
-
-    if (e.touches.length === 2) {
-      this.touchState.oneFinger = false;
-      this.touchState.twoFinger = true;
-
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      this.touchState.lastDistance = Math.sqrt(dx * dx + dy * dy);
-
-      this.touchState.lastX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      this.touchState.lastY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    }
-  }
-
-  onTouchMove(e) {
-    e.preventDefault();
-
-    if (this.touchState.oneFinger && e.touches.length === 1) {
-      const dx = e.touches[0].clientX - this.touchState.lastX;
-      const dy = e.touches[0].clientY - this.touchState.lastY;
-
-      this.controls.getObject().rotation.y -= dx * this.touchLookSpeed;
-      this.controls.getPitchObject().rotation.x -= dy * this.touchLookSpeed;
-
-      this.touchState.lastX = e.touches[0].clientX;
-      this.touchState.lastY = e.touches[0].clientY;
-    }
-
-    if (this.touchState.twoFinger && e.touches.length === 2) {
-      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
-      const dx = cx - this.touchState.lastX;
-      const dy = cy - this.touchState.lastY;
-
-      this.horizontalMovementSpeed = dx * this.touchMoveSpeed;
-      this.verticalMovementSpeed = -dy * this.touchMoveSpeed;
-
-      const px = e.touches[0].clientX - e.touches[1].clientX;
-      const py = e.touches[0].clientY - e.touches[1].clientY;
-      const distance = Math.sqrt(px * px + py * py);
-
-      const pinchDelta = distance - this.touchState.lastDistance;
-      this.movementSpeed = pinchDelta * this.touchFlySpeed;
-
-      this.touchState.lastDistance = distance;
-      this.touchState.lastX = cx;
-      this.touchState.lastY = cy;
-    }
-  }
-
-  onTouchEnd() {
-    this.touchState.oneFinger = false;
-    this.touchState.twoFinger = false;
-    this.movementSpeed = 0;
-    this.horizontalMovementSpeed = 0;
-    this.verticalMovementSpeed = 0;
-  }
-
-  update(dt) {
-    if (!this.controls.isLocked) return;
-
-    if (this.moveForward && this.movementSpeed < 50) this.movementSpeed += this.flySpeed;
-    else if (this.moveBackward && this.movementSpeed > -50) this.movementSpeed -= this.flySpeed;
-    else this.movementSpeed *= 0.8;
-
-    if (this.moveRight && this.horizontalMovementSpeed < 50) this.horizontalMovementSpeed += this.flySpeed;
-    else if (this.moveLeft && this.horizontalMovementSpeed > -50) this.horizontalMovementSpeed -= this.flySpeed;
-    else this.horizontalMovementSpeed *= 0.8;
-
-    if (this.moveUp && this.verticalMovementSpeed < 50) this.verticalMovementSpeed += this.flySpeed;
-    else if (this.moveDown && this.verticalMovementSpeed > -50) this.verticalMovementSpeed -= this.flySpeed;
-    else this.verticalMovementSpeed *= 0.8;
-
-    this.cam.translateX(this.horizontalMovementSpeed * dt);
-    this.cam.translateY(this.verticalMovementSpeed * dt);
-    this.cam.translateZ(-this.movementSpeed * dt);
-  }
+  update(dt) {}
 }

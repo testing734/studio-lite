@@ -44,8 +44,13 @@ export default class FlyCamera {
     });
 
     this.touchActive = false;
+    this.gestureMode = null;
+
     this.startDist = 0;
     this.startMid = { x: 0, y: 0 };
+
+    this.dragThreshold = 12;
+    this.pinchThreshold = 14;
 
     domElement.addEventListener("touchstart", this.onTouchStart.bind(this), { passive: false });
     domElement.addEventListener("touchmove", this.onTouchMove.bind(this), { passive: false });
@@ -57,6 +62,7 @@ export default class FlyCamera {
     if (e.touches.length !== 2) return;
     e.preventDefault();
     this.touchActive = true;
+    this.gestureMode = null;
     const a = e.touches[0];
     const b = e.touches[1];
     this.startDist = this.distance(a, b);
@@ -79,24 +85,31 @@ export default class FlyCamera {
 
     this.resetMovement();
 
-    if (Math.abs(pinchDelta) > 10) {
+    if (!this.gestureMode) {
+      if (Math.abs(pinchDelta) > this.pinchThreshold) this.gestureMode = "pinch";
+      else if (Math.abs(dragX) > this.dragThreshold || Math.abs(dragY) > this.dragThreshold) this.gestureMode = "drag";
+    }
+
+    if (this.gestureMode === "pinch") {
       if (pinchDelta > 0) this.moveForward = true;
       else this.moveBackward = true;
     }
 
-    if (Math.abs(dragX) > 10) {
-      if (dragX > 0) this.moveRight = true;
-      else this.moveLeft = true;
-    }
-
-    if (Math.abs(dragY) > 10) {
-      if (dragY < 0) this.moveUp = true;
-      else this.moveDown = true;
+    if (this.gestureMode === "drag") {
+      if (Math.abs(dragX) > this.dragThreshold) {
+        if (dragX > 0) this.moveRight = true;
+        else this.moveLeft = true;
+      }
+      if (Math.abs(dragY) > this.dragThreshold) {
+        if (dragY < 0) this.moveUp = true;
+        else this.moveDown = true;
+      }
     }
   }
 
   onTouchEnd() {
     this.touchActive = false;
+    this.gestureMode = null;
     this.resetMovement();
   }
 

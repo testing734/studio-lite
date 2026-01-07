@@ -20,7 +20,9 @@ export default class FlyCamera {
     this.touchLastY = 0;
     this.touchStartDist = 0;
 
-    // Mouse look
+    this.tempVec = new THREE.Vector3();
+    this.tempQuat = new THREE.Quaternion();
+
     window.addEventListener("mousedown", e => {
       if (e.button === 2) {
         this.isMouseDown = true;
@@ -32,31 +34,25 @@ export default class FlyCamera {
       if (e.button === 2) this.isMouseDown = false;
     });
     window.addEventListener("mousemove", e => {
-      if (this.isMouseDown) {
-        const dx = e.clientX - this.mouseLastX;
-        const dy = e.clientY - this.mouseLastY;
-        this.yaw -= dx * this.lookSensitivity;
-        this.pitch -= dy * this.lookSensitivity;
-        this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
-        this.mouseLastX = e.clientX;
-        this.mouseLastY = e.clientY;
-
-        const q = new THREE.Quaternion();
-        q.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
-        this.cam.quaternion.copy(q);
-      }
+      if (!this.isMouseDown) return;
+      const dx = e.clientX - this.mouseLastX;
+      const dy = e.clientY - this.mouseLastY;
+      this.yaw -= dx * this.lookSensitivity;
+      this.pitch -= dy * this.lookSensitivity;
+      this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+      this.mouseLastX = e.clientX;
+      this.mouseLastY = e.clientY;
+      this.tempQuat.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
+      this.cam.quaternion.copy(this.tempQuat);
     });
     window.addEventListener("contextmenu", e => e.preventDefault());
 
-    // Scroll zoom
     window.addEventListener("wheel", e => {
-      const dir = new THREE.Vector3();
-      this.cam.getWorldDirection(dir);
-      dir.multiplyScalar(e.deltaY * -0.02);
-      this.cam.position.add(dir);
+      this.cam.getWorldDirection(this.tempVec);
+      this.tempVec.multiplyScalar(e.deltaY * -0.02);
+      this.cam.position.add(this.tempVec);
     });
 
-    // Touch controls
     window.addEventListener("touchstart", e => {
       if (e.touches.length === 1) {
         this.isTouching = true;
@@ -71,6 +67,7 @@ export default class FlyCamera {
     });
 
     window.addEventListener("touchmove", e => {
+      e.preventDefault();
       if (e.touches.length === 1 && this.isTouching) {
         const dx = e.touches[0].clientX - this.touchLastX;
         const dy = e.touches[0].clientY - this.touchLastY;
@@ -79,23 +76,20 @@ export default class FlyCamera {
         this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
         this.touchLastX = e.touches[0].clientX;
         this.touchLastY = e.touches[0].clientY;
-
-        const q = new THREE.Quaternion();
-        q.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
-        this.cam.quaternion.copy(q);
+        this.tempQuat.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, "YXZ"));
+        this.cam.quaternion.copy(this.tempQuat);
       } else if (e.touches.length === 2) {
         const dist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
         const delta = dist - this.touchStartDist;
-        const dir = new THREE.Vector3();
-        this.cam.getWorldDirection(dir);
-        dir.multiplyScalar(delta * 0.05);
-        this.cam.position.add(dir);
+        this.cam.getWorldDirection(this.tempVec);
+        this.tempVec.multiplyScalar(delta * 0.05);
+        this.cam.position.add(this.tempVec);
         this.touchStartDist = dist;
       }
-    });
+    }, { passive: false });
 
     window.addEventListener("touchend", () => {
       this.isTouching = false;

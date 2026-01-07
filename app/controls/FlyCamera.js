@@ -1,13 +1,14 @@
+import * as THREE from "three";
 import { PointerLockControls } from "./PointerLockControls.js";
 
 export default class FlyCamera {
   constructor(cam, domElement) {
-    this.cam = cam;
     this.domElement = domElement;
-
+    this.cam = cam;
     this.flySpeed = 5;
     this.isMobile = "ontouchstart" in window;
 
+    
     this.controls = null;
     if (!this.isMobile && this.isPointerLockSupported()) {
       this.controls = new PointerLockControls(this.cam, this.domElement);
@@ -44,66 +45,78 @@ export default class FlyCamera {
       });
     }
 
-    this.lastTouch = null;
-    this.lastPinchDistance = null;
+    // Mobile rotation setup
+    if (this.isMobile) {
+      this.yawObject = new THREE.Object3D();
+      this.pitchObject = new THREE.Object3D();
+      this.yawObject.add(this.pitchObject);
+      this.pitchObject.add(this.cam);
 
-    this.touchRotateSpeed = 0.004;
-    this.touchZoomSpeed = 0.05;
-
-    domElement.addEventListener("touchstart", (e) => {
-      if (e.touches.length === 1) {
-        const t = e.touches[0];
-        this.lastTouch = { x: t.clientX, y: t.clientY };
-      }
-      if (e.touches.length === 2) {
-        this.lastPinchDistance = this.getPinchDistance(e.touches);
-      }
-    });
-
-    domElement.addEventListener(
-      "touchmove",
-      (e) => {
-        e.preventDefault();
-
-        if (e.touches.length === 1 && this.lastTouch) {
-          const t = e.touches[0];
-          const dx = t.clientX - this.lastTouch.x;
-          const dy = t.clientY - this.lastTouch.y;
-
-          this.cam.rotation.y -= dx * this.touchRotateSpeed;
-          this.cam.rotation.x -= dy * this.touchRotateSpeed;
-
-          this.cam.rotation.x = Math.max(
-            -Math.PI / 2,
-            Math.min(Math.PI / 2, this.cam.rotation.x)
-          );
-
-          this.lastTouch.x = t.clientX;
-          this.lastTouch.y = t.clientY;
-        }
-
-        if (e.touches.length === 2 && this.lastPinchDistance !== null) {
-          const currentDistance = this.getPinchDistance(e.touches);
-          const delta = currentDistance - this.lastPinchDistance;
-          this.cam.translateZ(-delta * this.touchZoomSpeed);
-          this.lastPinchDistance = currentDistance;
-        }
-      },
-      { passive: false }
-    );
-
-    domElement.addEventListener("touchend", () => {
       this.lastTouch = null;
       this.lastPinchDistance = null;
-    });
+      this.touchRotateSpeed = 0.004;
+      this.touchZoomSpeed = 0.05;
 
+      domElement.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+          const t = e.touches[0];
+          this.lastTouch = { x: t.clientX, y: t.clientY };
+        }
+        if (e.touches.length === 2) {
+          this.lastPinchDistance = this.getPinchDistance(e.touches);
+        }
+      });
+
+      domElement.addEventListener(
+        "touchmove",
+        (e) => {
+          e.preventDefault();
+
+          
+          if (e.touches.length === 1 && this.lastTouch) {
+            const t = e.touches[0];
+            const dx = t.clientX - this.lastTouch.x;
+            const dy = t.clientY - this.lastTouch.y;
+
+            this.yawObject.rotation.y -= dx * this.touchRotateSpeed;
+            this.pitchObject.rotation.x -= dy * this.touchRotateSpeed;
+            this.pitchObject.rotation.x = Math.max(
+              -Math.PI / 2,
+              Math.min(Math.PI / 2, this.pitchObject.rotation.x)
+            );
+
+            this.lastTouch.x = t.clientX;
+            this.lastTouch.y = t.clientY;
+          }
+          if (e.touches.length === 2 && this.lastPinchDistance !== null) {
+            const currentDistance = this.getPinchDistance(e.touches);
+            const delta = currentDistance - this.lastPinchDistance;
+
+            const forward = new THREE.Vector3();
+            this.cam.getWorldDirection(forward);
+            forward.multiplyScalar(-delta * this.touchZoomSpeed);
+            this.yawObject.position.add(forward);
+
+            this.lastPinchDistance = currentDistance;
+          }
+        },
+        { passive: false }
+      );
+
+      domElement.addEventListener("touchend", () => {
+        this.lastTouch = null;
+        this.lastPinchDistance = null;
+      });
+    }
+
+    
     this.movementSpeed = 0;
     this.horizontalMovementSpeed = 0;
     this.verticalMovementSpeed = 0;
   }
 
   update(dt) {
-    if (this.isMobile) return;
+    if (this.isMobile) return; 
 
     if (this.controls && !this.controls.isLocked) return;
 

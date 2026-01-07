@@ -1,5 +1,9 @@
 import { PointerLockControls } from "./PointerLockControls.js";
-
+import {
+	Controls,
+	Euler,
+	Vector3
+} from '../thirdparty/three/three.core.js';
 export default class FlyCamera {
   constructor(cam, domElement) {
     this.cam = cam;

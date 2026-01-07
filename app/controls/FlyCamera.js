@@ -12,10 +12,10 @@ export default class FlyCamera {
     this.moveUp = false;
     this.moveDown = false;
 
-    this.movementSpeed = 0;
+    this.movementSpeed = 2;
     this.horizontalMovementSpeed = 0;
     this.verticalMovementSpeed = 0;
-    this.flySpeed = 5;
+    this.flySpeed = 20;
 
     this.controls = new PointerLockControls(this.cam, this.domElement);
 

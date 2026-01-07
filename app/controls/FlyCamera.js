@@ -25,26 +25,22 @@ export default class FlyCamera {
 
     window.addEventListener("keydown", (e) => {
       if (!this.controls.isLocked) return;
-      switch (e.code) {
-        case "KeyW": this.moveForward = true; break;
-        case "KeyS": this.moveBackward = true; break;
-        case "KeyA": this.moveLeft = true; break;
-        case "KeyD": this.moveRight = true; break;
-        case "KeyE": this.moveUp = true; break;
-        case "KeyQ": this.moveDown = true; break;
-      }
+      if (e.code === "KeyW") this.moveForward = true;
+      if (e.code === "KeyS") this.moveBackward = true;
+      if (e.code === "KeyA") this.moveLeft = true;
+      if (e.code === "KeyD") this.moveRight = true;
+      if (e.code === "KeyE") this.moveUp = true;
+      if (e.code === "KeyQ") this.moveDown = true;
     });
 
     window.addEventListener("keyup", (e) => {
       if (!this.controls.isLocked) return;
-      switch (e.code) {
-        case "KeyW": this.moveForward = false; break;
-        case "KeyS": this.moveBackward = false; break;
-        case "KeyA": this.moveLeft = false; break;
-        case "KeyD": this.moveRight = false; break;
-        case "KeyE": this.moveUp = false; break;
-        case "KeyQ": this.moveDown = false; break;
-      }
+      if (e.code === "KeyW") this.moveForward = false;
+      if (e.code === "KeyS") this.moveBackward = false;
+      if (e.code === "KeyA") this.moveLeft = false;
+      if (e.code === "KeyD") this.moveRight = false;
+      if (e.code === "KeyE") this.moveUp = false;
+      if (e.code === "KeyQ") this.moveDown = false;
     });
 
     this.touchActive = false;
@@ -61,7 +57,8 @@ export default class FlyCamera {
     if (e.touches.length !== 2) return;
     e.preventDefault();
     this.touchActive = true;
-    const [a, b] = e.touches;
+    const a = e.touches[0];
+    const b = e.touches[1];
     this.startDist = this.distance(a, b);
     this.startMid = this.midpoint(a, b);
   }
@@ -70,7 +67,9 @@ export default class FlyCamera {
     if (!this.touchActive || e.touches.length !== 2) return;
     e.preventDefault();
 
-    const [a, b] = e.touches;
+    const a = e.touches[0];
+    const b = e.touches[1];
+
     const dist = this.distance(a, b);
     const mid = this.midpoint(a, b);
 
@@ -81,15 +80,18 @@ export default class FlyCamera {
     this.resetMovement();
 
     if (Math.abs(pinchDelta) > 10) {
-      pinchDelta > 0 ? this.moveForward = true : this.moveBackward = true;
+      if (pinchDelta > 0) this.moveForward = true;
+      else this.moveBackward = true;
     }
 
     if (Math.abs(dragX) > 10) {
-      dragX > 0 ? this.moveRight = true : this.moveLeft = true;
+      if (dragX > 0) this.moveRight = true;
+      else this.moveLeft = true;
     }
 
     if (Math.abs(dragY) > 10) {
-      dragY < 0 ? this.moveUp = true : this.moveDown = true;
+      if (dragY < 0) this.moveUp = true;
+      else this.moveDown = true;
     }
   }
 
@@ -139,29 +141,4 @@ export default class FlyCamera {
     this.cam.translateY(this.verticalMovementSpeed * dt);
     this.cam.translateZ(-this.movementSpeed * dt);
   }
-}
-				this.horizontalMovementSpeed -= this.flySpeed;
-			} else if (this.horizontalMovementSpeed < 0) {
-				this.horizontalMovementSpeed += this.flySpeed;
-			}
-		}
-		if (this.moveUp) {
-			if (this.verticalMovementSpeed < 50) {
-				this.verticalMovementSpeed += this.flySpeed;
-			}
-		} else if (this.moveDown) {
-			if (this.verticalMovementSpeed > -50) {
-				this.verticalMovementSpeed -= this.flySpeed;
-			}
-		} else {
-			if (this.verticalMovementSpeed > 0) {
-				this.verticalMovementSpeed -= this.flySpeed;
-			} else if (this.verticalMovementSpeed < 0) {
-				this.verticalMovementSpeed += this.flySpeed;
-			}
-		}
-		this.cam.translateX(this.horizontalMovementSpeed * dt);
-		this.cam.translateY(this.verticalMovementSpeed * dt);
-		this.cam.translateZ(-this.movementSpeed * dt);
-	}
 }

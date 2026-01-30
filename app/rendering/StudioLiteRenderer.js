@@ -27,7 +27,7 @@ import {
 import { decode } from "../thirdparty/rbxBinaryParser.js";
 import FlyCamera from '../controls/FlyCamera.js';
 import { WebGLRenderer } from '../thirdparty/three/three.module.js';
-import { LightmapBaker } from './three-lightmap-baker/LightmapBaker.js';
+
 import {
     findByClassName
 } from '../datamodel/DataModelUtils.js';
@@ -109,35 +109,6 @@ export class StudioLiteRenderer {
             }
         }
     }
-disableRealtimeShadows() {
-    this.scene.traverse((node) => {
-        if (node.isLight && node.type === 'DirectionalLight') {
-            node.castShadow = false; // Disable sun shadows
-        }
-        if (node.isMesh) {
-            // Optionally switch to a material that supports lightmaps
-            // node.material.needsUpdate = true;
-        }
-    });
-}
-
-	
-    startLightBake() {
-  if (this._baked) return; // safety
-  this._baked = true;
-
-  const baker = new LightmapBaker({
-    scene: this.scene,
-    renderer: this.renderer,
-    samples: 128,
-    resolution: 1024
-  });
-
-  baker.bake().then(() => {
-    console.log("Bake complete");
-    this.disableRealtimeShadows();
-  });
-}
 
     renderImage(width = this.conf.width, height = this.conf.height) {
         if (this.selectionBox) this.scene.remove(this.selectionBox);
@@ -521,6 +492,5 @@ disableRealtimeShadows() {
             } catch (ignored) {};
         });
         await this.traverse({"Children": this.data}, this.conf.sharedObjects.jsTreeData);
-		this.startLightBake(); 
     }
 }
